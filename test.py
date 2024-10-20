@@ -51,8 +51,8 @@ if __name__ == "__main__":
     # 处理 opt
     # =============================================================
     parser = argparse.ArgumentParser()
-    parser.add_argument("-b", "--base", type=str, default="configs/test.yaml")
-    parser.add_argument("-c", "--ckpt", type=str, default="./model.ckpt")
+    parser.add_argument("-b", "--base", type=str, default="configs/test_vitonhd.yaml")
+    parser.add_argument("-c", "--ckpt", type=str, default="ckpt/hitonhd.ckpt")
     parser.add_argument("-s", "--seed", type=int, default=42)
     parser.add_argument("-d", "--ddim", type=int, default=64)
     opt = parser.parse_args()
@@ -76,13 +76,13 @@ if __name__ == "__main__":
     # =============================================================
     # 加载 model
     # =============================================================
-    model = instantiate_from_config(config.model)
-    model.load_state_dict(torch.load(opt.ckpt, map_location="cpu")["state_dict"], strict=False)
-    model.cuda()
-    model.eval()
+    # model = instantiate_from_config(config.model)
+    # model.load_state_dict(torch.load(opt.ckpt, map_location="cpu")["state_dict"], strict=False)
+    # model.cuda()
+    # model.eval()
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-    model = model.to(device)
-    sampler = DDIMSampler(model)
+    # model = model.to(device)
+    # sampler = DDIMSampler(model)
 
     # =============================================================
     # 设置精度
@@ -92,18 +92,23 @@ if __name__ == "__main__":
     # =============================================================
     # 开始测试
     # =============================================================
-    os.makedirs("results/Unpaired_Direst")
-    os.makedirs("results/Unpaired_Concatenation")
+    # os.makedirs("results/Unpaired_Direst")
+    # os.makedirs("results/Unpaired_Concatenation")
 
     with torch.no_grad():
         with precision_scope("cuda"):
             for i,batch in enumerate(data.dataloader):
                 # 加载数据
                 inpaint = batch["inpaint_image"].to(torch.float16).to(device)
+                # print(inpaint.shape)
                 reference = batch["ref_imgs"].to(torch.float16).to(device)
+                # print(reference.shape)
                 mask = batch["inpaint_mask"].to(torch.float16).to(device)
+                # print(mask.shape)
                 hint = batch["hint"].to(torch.float16).to(device)
+                # print(hint.shape)
                 truth = batch["GT"].to(torch.float16).to(device)
+                # print(truth.shape)
                 # 数据处理
                 encoder_posterior_inpaint = model.first_stage_model.encode(inpaint)
                 z_inpaint = model.scale_factor * (encoder_posterior_inpaint.sample()).detach()

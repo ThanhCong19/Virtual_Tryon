@@ -240,12 +240,19 @@ class ControlLDM(DDPM):
         self.learnable_vector = nn.Parameter(torch.randn((1,1,768)), requires_grad=False)
         self.trainable_vector = nn.Parameter(torch.randn((1,1,768)), requires_grad=True)
 
-        self.dinov2_vitl14 = torch.hub.load('facebookresearch/dinov2', 'dinov2_vitl14')
-        self.dinov2_vitl14.eval()
-        self.dinov2_vitl14.train = disabled_train
-        for param in self.dinov2_vitl14.parameters():
-            param.requires_grad = False 
-        self.linear = nn.Linear(1024, 768)
+        # self.dinov2_vitl14 = torch.hub.load('facebookresearch/dinov2', 'dinov2_vitl14')
+        # self.dinov2_vitl14.eval()
+        # self.dinov2_vitl14.train = disabled_train
+        # for param in self.dinov2_vitl14.parameters():
+        #     param.requires_grad = False 
+        # self.linear = nn.Linear(1024, 768)
+
+        self.dinov2_vitg14 = torch.hub.load('facebookresearch/dinov2', 'dinov2_vitg14')
+        self.dinov2_vitg14.eval()
+        self.dinov2_vitg14.train = disabled_train
+        for param in self.dinov2_vitg14.parameters():
+            param.requires_grad = False
+        self.linear = nn.Linear(1536, 768)
 
     # AutoencoderKL 不训练
     def instantiate_first_stage(self, config):

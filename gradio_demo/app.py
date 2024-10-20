@@ -70,19 +70,19 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Script for demo model")
     parser.add_argument("-b", "--base", type=str, default=r"configs/test_vitonhd.yaml")
-    parser.add_argument("-c", "--ckpt", type=str, default=r"checkpoints/hitonhd.ckpt")
+    parser.add_argument("-c", "--ckpt", type=str, default=r"ckpt/hitonhd.ckpt")
     parser.add_argument("-s", "--seed", type=str, default=42)
     parser.add_argument("-d", "--ddim", type=str, default=64)
-    args = parser.parse_args()
+    opt = parser.parse_args()
 
-    seed_everything(args.seed)
-    config = OmegaConf.load(f"{args.base}")
+    seed_everything(opt.seed)
+    config = OmegaConf.load(f"{opt.base}")
     # data = instantiate_from_config(config.data)
 
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
     # model = instantiate_from_config(config.model)
-    # model.load_state_dict(torch.load(args.ckpt, map_location="cpu")["state_dict"], strict=False)
+    # model.load_state_dict(torch.load(opt.ckpt, map_location="cpu")["state_dict"], strict=False)
     # model.cuda()
     # model.eval()
     # model = model.to(device)
@@ -134,7 +134,7 @@ if __name__ == "__main__":
         human_img = human_img.convert("RGB").resize((512, 512))
         human_img = torchvision.transforms.ToTensor()(human_img)
 
-        garm_img = garm_img.convert("RGB").resize((512, 512))
+        garm_img = garm_img.convert("RGB").resize((224, 224))
         garm_img = torchvision.transforms.ToTensor()(garm_img)
 
         mask = mask.convert("L").resize((512,512))
@@ -166,11 +166,11 @@ if __name__ == "__main__":
         with torch.no_grad():
             with precision_scope("cuda"):
                 #loading data
-                inpaint = inpaint.to(torch.float16).to(device)
-                reference = garm_img.to(torch.float16).to(device)
-                mask = mask.to(torch.float16).to(device)
-                hint = hint.to(torch.float16).to(device)
-                truth = human_img.to(torch.float16).to(device)
+                inpaint = inpaint.unsqueeze(0).to(torch.float16).to(device)
+                reference = garm_img.unsqueeze(0).to(torch.float16).to(device)
+                mask = mask.unsqueeze(0).to(torch.float16).to(device)
+                hint = hint.unsqueeze(0).to(torch.float16).to(device)
+                truth = human_img.unsqueeze(0).to(torch.float16).to(device)
 
                 #data preprocessing
                 encoder_posterior_inpaint = model.first_stage_model.encode(inpaint)
@@ -182,7 +182,7 @@ if __name__ == "__main__":
                 shape = (model.channels, model.image_size, model.image_size)
 
                 #predict
-                samples, _ = sampler.sample(S=args.ddim,
+                samples, _ = sampler.sample(S=opt.ddim,
                                                  batch_size=1,
                                                  shape=shape,
                                                  pose=hint,
