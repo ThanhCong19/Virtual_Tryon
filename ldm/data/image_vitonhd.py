@@ -1,4 +1,5 @@
 import os
+import json
 import random
 import torch
 import torchvision
@@ -6,53 +7,97 @@ from torchvision import transforms
 import torch.utils.data as data
 import torchvision.transforms.functional as TF
 from PIL import Image
+from typing import Literal, Tuple,List
+
 
 class OpenImageDataset(data.Dataset):
-    def __init__(self, state, dataset_dir, type="paired"):
+    def __init__(
+        self, 
+        state: Literal["train", "test"], 
+        dataset_dir: str, 
+        type: Literal["paired", "unpaired"] = "paired",
+    ):
         self.state=state
         self.dataset_dir = dataset_dir
-        self.dataset_list = []
         self.flip_transform = transforms.RandomHorizontalFlip(p=1)
 
+        with open(
+            os.path.join(dataset_dir, state, "vitonhd_" + state + "_tagged.json"), "r"
+        ) as file1:
+            data1 = json.load(file1)
+
+        annotation_list = [
+            # "colors",
+            # "textures",
+            "sleeveLength",
+            "neckLine",
+            "item",
+        ]
+
+        self.annotations_pair = {}
+        for k, v in data1.items():
+            for elem in v:
+                annotation_str = ""
+                for template in annotation_list:
+                    for tag in elem["tag_info"]:  
+                        if (
+                            tag["tag_name"] == template
+                            and tag["tag_category"] is not None
+                        ):
+                            annotation_str += tag["tag_category"]
+                            annotation_str += " "
+                self.annotations_pair[elem["file_name"]] = annotation_str          
+
+
+        im_names = []
+        c_names = []
+
         if state == "train":
-            self.dataset_file = os.path.join(dataset_dir, "train_pairs.txt")
-            with open(self.dataset_file, 'r') as f:
-                for line in f.readlines():
-                    person, garment = line.strip().split()
-                    self.dataset_list.append([person, person])
-
-        if state == "test":
-            self.dataset_file = os.path.join(dataset_dir, "test_pairs.txt")
-            if type == "unpaired":
-                with open(self.dataset_file, 'r') as f:
-                    for line in f.readlines():
-                        person, garment = line.strip().split()
-                        self.dataset_list.append([person, garment])
-
-            if type == "paired":
-                with open(self.dataset_file, 'r') as f:
-                    for line in f.readlines():
-                        person, garment = line.strip().split()
-                        self.dataset_list.append([person, person])
+            filename = os.path.join(dataset_dir, f"{state}_pairs.txt")
+        else:
+            filename = os.path.join(dataset_dir, f"{state}_pairs.txt")
+        
+        with open(filename, "r") as f:
+            for line in f.readlines():
+                if state == "train":
+                    im_name, _ = line.strip().split()
+                    c_name = im_name
+                else:
+                    if type == "paired":
+                        im_name, _ = line.strip().split()
+                        c_name = im_name
+                    else:
+                        im_name, c_name = line.strip().split()
+                
+                im_names.append(im_name)
+                c_names.append(c_name)
+        
+        self.im_names = im_names
+        self.c_names = c_names                    
 
     def __len__(self):
-        return len(self.dataset_list)
+        return len(self.im_names)
     
     def __getitem__(self, index):
+        c_name = self.c_names[index]
+        im_name = self.im_names[index]
 
-        person, garment = self.dataset_list[index]
+        if c_name in self.annotations_pair:
+            cloth_annotation = self.annotations_pair[c_name]
+        else:
+            cloth_annotation = "shirts"
 
         # 确定路径
-        img_path = os.path.join(self.dataset_dir, self.state, "image", person)
-        reference_path = os.path.join(self.dataset_dir, self.state, "cloth", garment)
-        mask_path = os.path.join(self.dataset_dir, self.state, "mask", person[:-4]+".png")                              
-        densepose_path = os.path.join(self.dataset_dir, self.state, "image-densepose", person)
+        img_path = os.path.join(self.dataset_dir, self.state, "image", im_name)
+        reference_path = os.path.join(self.dataset_dir, self.state, "cloth", c_name)
+        mask_path = os.path.join(self.dataset_dir, self.state, "agnostic-mask", im_name[:-4]+"_mask.png")                              
+        densepose_path = os.path.join(self.dataset_dir, self.state, "image-densepose", im_name)
         
         # 加载图像
         img = Image.open(img_path).convert("RGB").resize((512, 512))
         img = torchvision.transforms.ToTensor()(img)
         reference = Image.open(reference_path).convert("RGB").resize((224, 224))
-        reference = torchvision.transforms.ToTensor()(refernce)
+        reference = torchvision.transforms.ToTensor()(reference)
         mask = Image.open(mask_path).convert("L").resize((512, 512))
         mask = torchvision.transforms.ToTensor()(mask)
         mask = 1-mask
@@ -129,21 +174,23 @@ class OpenImageDataset(data.Dataset):
 
         # 正则化
         img = torchvision.transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))(img)
-        refernce = torchvision.transforms.Normalize((0.48145466, 0.4578275, 0.40821073),
-                                                    (0.26862954, 0.26130258, 0.27577711))(refernce)
+        reference = torchvision.transforms.Normalize((0.48145466, 0.4578275, 0.40821073),
+                                                    (0.26862954, 0.26130258, 0.27577711))(reference)
         densepose = torchvision.transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))(densepose)
 
         # 生成 inpaint 和 hint
         inpaint = img * mask
-        hint = torchvision.transforms.Resize((512, 512))(refernce)
+        hint = torchvision.transforms.Resize((512, 512))(reference)
         hint = torch.cat((hint,densepose),dim = 0)
 
-        return {"GT": img,                  # [3, 512, 512]
-                "inpaint_image": inpaint,   # [3, 512, 512]
-                "inpaint_mask": mask,       # [1, 512, 512]
-                "ref_imgs": refernce,       # [3, 224, 224]
-                "hint": hint,               # [6, 512, 512]
+        return {"GT": img,                                          # [3, 512, 512]
+                "inpaint_image": inpaint,                           # [3, 512, 512]
+                "inpaint_mask": mask,                               # [1, 512, 512]
+                "ref_imgs": reference,                              # [3, 224, 224]
+                "hint": hint,                                       # [6, 512, 512]
+                "caption_cloth": "a photo of " + cloth_annotation,
+                # "caption": "model is wearing " + cloth_annotation,
                 }
 
 
-# if __name__ == "__main__":
+

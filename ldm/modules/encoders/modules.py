@@ -135,7 +135,7 @@ class SpatialRescaler(nn.Module):
 
 
 class FrozenCLIPImageEmbedder(AbstractEncoder):
-    """Uses the CLIP transformer encoder for text (from Hugging Face)"""
+    """Uses the CLIP transformer encoder for image (from Hugging Face)"""
     def __init__(self, version="openai/clip-vit-large-patch14"):
         super().__init__()
         self.transformer = CLIPVisionModel.from_pretrained(version)
@@ -168,5 +168,62 @@ class FrozenCLIPImageEmbedder(AbstractEncoder):
 
     def encode(self, image):
         return self(image)
+    
+
+class FrozenCLIPTextEmbedder(AbstractEncoder):
+    """
+    Uses the CLIP transformer encoder for text (from Hugging Face)
+    """
+    def __init__(self, version="openai/clip-vit-large-patch14"):
+        super().__init__()
+        
+        self.tokenizer = CLIPTokenizer.from_pretrained(version)
+        self.text_model = CLIPTextModel.from_pretrained(version)
+        
+        #up d_model 1024 to concat with ImageEmbedding
+        # self.linear_proj = nn.Linear(768, 1024)
+        self.final_ln = nn.LayerNorm(768)
+        encoder_layer = nn.TransformerEncoderLayer(
+            d_model=768,    
+            nhead=8,
+            dim_feedforward=2048,
+            batch_first=True
+        )
+        self.mapper = nn.TransformerEncoder(encoder_layer, num_layers=2)
+
+        self.freeze()
+
+    def freeze(self):
+        """
+        Freezes the transformer weights while keeping
+        the mapper and final layer normalization trainable.
+        """
+        self.text_model = self.text_model.eval()
+        for param in self.parameters():
+            param.requires_grad = False
+        for param in self.mapper.parameters():
+            param.requires_grad = True
+        for param in self.final_ln.parameters():
+            param.requires_grad = True
+        # self.linear_proj.requires_grad = True
+
+    def forward(self, text):
+        """
+        Encodes text using the tokenizer and transformer.
+        Applies mapper and final layer normalization for processing.
+        """
+        inputs = self.tokenizer(text, return_tensors="pt", padding=True, truncation=True)
+        outputs = self.text_model(**inputs)
+        
+        z = outputs.pooler_output
+        # z = self.linear_proj(z)    #768 -> 1024
+        z = z.unsqueeze(1)
+        z = self.mapper(z)
+        z = self.final_ln(z)
+
+        return z
+    
+    def encode(self, text):
+        return self(text)
 
 

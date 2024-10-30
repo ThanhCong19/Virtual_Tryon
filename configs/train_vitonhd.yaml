@@ -71,6 +71,9 @@ model:
     cond_stage_config:
       target: ldm.modules.encoders.modules.FrozenCLIPImageEmbedder
 
+    condi_stage_config:
+      target: ldm.modules.encoders.modules.FrozenCLIPTextEmbedder
+
 data:
   target: train.DataModuleFromConfig
   params:

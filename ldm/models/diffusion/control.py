@@ -228,6 +228,7 @@ class ControlLDM(DDPM):
                  control_stage_config,          # ControlNet
                  first_stage_config,            # AutoencoderKL
                  cond_stage_config,             # FrozenCLIPImageEmbedder
+                 condi_stage_config,            # FrozenCLIPTextEmbedder
                  scale_factor=1.0,              # 0.18215
                  *args, **kwargs):
         self.num_timesteps_cond = 1
@@ -235,24 +236,18 @@ class ControlLDM(DDPM):
         self.control_model = instantiate_from_config(control_stage_config)      # self.control_model
         self.instantiate_first_stage(first_stage_config)                        # self.first_stage_model 调用 AutoencoderKL
         self.instantiate_cond_stage(cond_stage_config)                          # self.cond_stage_model 调用 FrozenCLIPImageEmbedder
+        self.instantiate_condi_stage(condi_stage_config)                        # self.condi_stage_model FrozenCLIPTextEmbedder
         self.proj_out=nn.Linear(1024, 768)                                      # 全连接层
         self.scale_factor = scale_factor                                        # 0.18215
         self.learnable_vector = nn.Parameter(torch.randn((1,1,768)), requires_grad=False)
         self.trainable_vector = nn.Parameter(torch.randn((1,1,768)), requires_grad=True)
 
-        # self.dinov2_vitl14 = torch.hub.load('facebookresearch/dinov2', 'dinov2_vitl14')
-        # self.dinov2_vitl14.eval()
-        # self.dinov2_vitl14.train = disabled_train
-        # for param in self.dinov2_vitl14.parameters():
-        #     param.requires_grad = False 
-        # self.linear = nn.Linear(1024, 768)
-
-        self.dinov2_vitg14 = torch.hub.load('facebookresearch/dinov2', 'dinov2_vitg14')
-        self.dinov2_vitg14.eval()
-        self.dinov2_vitg14.train = disabled_train
-        for param in self.dinov2_vitg14.parameters():
-            param.requires_grad = False
-        self.linear = nn.Linear(1536, 768)
+        self.dinov2_vitl14 = torch.hub.load('facebookresearch/dinov2', 'dinov2_vitl14')
+        self.dinov2_vitl14.eval()
+        self.dinov2_vitl14.train = disabled_train
+        for param in self.dinov2_vitl14.parameters():
+            param.requires_grad = False 
+        self.linear = nn.Linear(1024, 768)
 
     # AutoencoderKL 不训练
     def instantiate_first_stage(self, config):
@@ -269,6 +264,13 @@ class ControlLDM(DDPM):
         self.cond_stage_model.train = disabled_train
         for param in self.cond_stage_model.parameters():
             param.requires_grad = False
+    
+    def instantiate_condi_stage(self, config):
+        model = instantiate_from_config(config)
+        self.condi_stage_model = model.eval()
+        self.condi_stage_model.train = disabled_train
+        for param in self.condi_stage_model.parammeters():
+            param.required_grad = False
 
     # 训练
     def training_step(self, batch, batch_idx):
@@ -321,6 +323,13 @@ class ControlLDM(DDPM):
         # CLIP 处理 reference
         reference_clip = self.cond_stage_model.encode(reference)
         reference_clip = self.proj_out(reference_clip)
+
+        # CLIP text reference
+        reference_clip_text = self.condi_stage_model(reference)
+
+        #apply CrossAttention to combine features
+        cross_att = CrossAttention()
+        reference_clip = cross_att(reference_clip, reference_clip_text, reference_clip_text)
 
         # DINO 处理 reference
         dino = self.dinov2_vitl14(reference,is_training=True)
@@ -404,3 +413,43 @@ class ControlLDM(DDPM):
     
 
 
+# CrossAttention class applies cross-attention between two embeddings: an image embedding and a text embedding.
+class CrossAttention(nn.Module):
+    def __init__(
+        self, 
+        embed_dim: int=768, 
+        num_heads: int=8
+    ):
+        """
+        Initializes a CrossAttention layer using multi-head attention.
+        
+        Args:
+            embed_dim (int): Dimensionality of the embeddings, which should match 
+                             the size of both reference_clip and reference_clip_text.
+            num_heads (int): Number of attention heads. Using multiple heads allows
+                             the model to focus on different parts of the input embeddings.
+        """
+        super(CrossAttention, self).__init__()
+        self.cross_attn = nn.MultiheadAttention(embed_dim=embed_dim, num_heads=num_heads, batch_first=True)
+    
+    def forward(self, query, key, value):
+        """
+        Applies cross-attention to the query, key, and value inputs.
+        
+        Args:
+            query (Tensor): The query tensor (in this case, reference_clip).
+                            Shape should be [batch_size, seq_length, embed_dim].
+            key (Tensor): The key tensor (in this case, reference_clip_text).
+                          Shape should be [batch_size, seq_length, embed_dim].
+            value (Tensor): The value tensor (in this case, reference_clip_text).
+                            Shape should be [batch_size, seq_length, embed_dim].
+        
+        Returns:
+            Tensor: The attention output after combining reference_clip and 
+                    reference_clip_text through cross-attention. 
+                    Shape is [batch_size, seq_length, embed_dim].
+        """
+        # Apply cross-attention, where `query` attends to `key` and `value`.
+        # `attn_output` contains the resulting embeddings, and `attn_weights` contains the attention weights.
+        attn_output, attn_weights = self.cross_attn(query, key, value)
+        return attn_output

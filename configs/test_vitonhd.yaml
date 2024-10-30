@@ -70,6 +70,9 @@ model:
     cond_stage_config:
       target: ldm.modules.encoders.modules.FrozenCLIPImageEmbedder
 
+    condi_stage_config:
+      target: ldm.modules.encoders.modules.FrozenCLIPTextEmbedder
+
 data:
   target: test.DataModuleFromConfig
   params:
@@ -79,7 +82,7 @@ data:
           target: ldm.data.image_vitonhd.OpenImageDataset
           params:
               state: test
-              dataset_dir: D:/Capstone_Project/datasets/vitonhd
+              dataset_dir: datasets/vitonhd
               type: unpaired
 
 lightning:
