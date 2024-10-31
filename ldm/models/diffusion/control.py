@@ -269,7 +269,7 @@ class ControlLDM(DDPM):
         model = instantiate_from_config(config)
         self.condi_stage_model = model.eval()
         self.condi_stage_model.train = disabled_train
-        for param in self.condi_stage_model.parammeters():
+        for param in self.condi_stage_model.parameters():
             param.required_grad = False
 
     # 训练
