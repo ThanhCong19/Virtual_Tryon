@@ -182,13 +182,15 @@ class OpenImageDataset(data.Dataset):
         inpaint = img * mask
         hint = torchvision.transforms.Resize((512, 512))(reference)
         hint = torch.cat((hint,densepose),dim = 0)
+        
+        cloth_annotation = "a photo of " + cloth_annotation
 
         return {"GT": img,                                          # [3, 512, 512]
                 "inpaint_image": inpaint,                           # [3, 512, 512]
                 "inpaint_mask": mask,                               # [1, 512, 512]
                 "ref_imgs": reference,                              # [3, 224, 224]
                 "hint": hint,                                       # [6, 512, 512]
-                "caption_cloth": "a photo of " + cloth_annotation,
+                "caption_cloth": cloth_annotation,
                 # "caption": "model is wearing " + cloth_annotation,
                 }
 

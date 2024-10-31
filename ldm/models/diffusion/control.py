@@ -295,7 +295,7 @@ class ControlLDM(DDPM):
     def get_input(self, batch):
         
         # 加载原始数据
-        x, inpaint, mask, reference, hint = super().get_input(batch)
+        x, inpaint, mask, reference, hint, cloth_annotation = super().get_input(batch)
         
         # AutoencoderKL 处理真值
         encoder_posterior = self.first_stage_model.encode(x)                           
@@ -315,7 +315,7 @@ class ControlLDM(DDPM):
         return out
     
     # 计算损失
-    def forward(self, z_new, reference, hint):
+    def forward(self, z_new, reference, hint, cloth_annotation):
         
         # 随机时间 t
         t = torch.randint(0, self.num_timesteps, (z_new.shape[0],), device=self.device).long()
@@ -325,7 +325,7 @@ class ControlLDM(DDPM):
         reference_clip = self.proj_out(reference_clip)
 
         # CLIP text reference
-        reference_clip_text = self.condi_stage_model(reference)
+        reference_clip_text = self.condi_stage_model(cloth_annotation)
 
         #apply CrossAttention to combine features
         cross_att = CrossAttention()
