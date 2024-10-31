@@ -159,6 +159,7 @@ class FrozenCLIPImageEmbedder(AbstractEncoder):
             param.requires_grad = True
 
     def forward(self, image):
+        image = image.to('cuda')
         outputs = self.transformer(pixel_values=image)
         z = outputs.pooler_output
         z = z.unsqueeze(1)
@@ -190,6 +191,7 @@ class FrozenCLIPTextEmbedder(AbstractEncoder):
             batch_first=True
         )
         self.mapper = nn.TransformerEncoder(encoder_layer, num_layers=2)
+        self.device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
         self.freeze()
 
@@ -213,6 +215,7 @@ class FrozenCLIPTextEmbedder(AbstractEncoder):
         Applies mapper and final layer normalization for processing.
         """
         inputs = self.tokenizer(text, return_tensors="pt", padding=True, truncation=True)
+        inputs = {k: v.to('cuda') for k, v in inputs.items()}
         outputs = self.text_model(**inputs)
         
         z = outputs.pooler_output

@@ -274,8 +274,8 @@ class ControlLDM(DDPM):
 
     # 训练
     def training_step(self, batch, batch_idx):
-        z_new, reference, hint= self.get_input(batch)               # 加载数据
-        loss= self(z_new, reference, hint)                          # 计算损失
+        z_new, reference, hint, cloth_annotation= self.get_input(batch)               # 加载数据
+        loss= self(z_new, reference, hint, cloth_annotation)                          # 计算损失
         self.log("loss",                                            # 记录损失
                  loss,                                  
                  prog_bar=True,
@@ -310,7 +310,7 @@ class ControlLDM(DDPM):
         
         # 整理 z_new
         z_new = torch.cat((z,z_inpaint,mask_resize),dim=1)
-        out  = [z_new, reference, hint]
+        out  = [z_new, reference, hint, cloth_annotation]
         
         return out
     
@@ -325,10 +325,10 @@ class ControlLDM(DDPM):
         reference_clip = self.proj_out(reference_clip)
 
         # CLIP text reference
-        reference_clip_text = self.condi_stage_model(cloth_annotation)
+        reference_clip_text = self.condi_stage_model.encode(cloth_annotation)
 
         #apply CrossAttention to combine features
-        cross_att = CrossAttention()
+        cross_att = CrossAttention().to('cuda')
         reference_clip = cross_att(reference_clip, reference_clip_text, reference_clip_text)
 
         # DINO 处理 reference
@@ -378,8 +378,8 @@ class ControlLDM(DDPM):
     # 采样
     @torch.no_grad()
     def sample_log(self, batch, ddim_steps=50, ddim_eta=0.):
-        z_new, reference, hint = self.get_input(batch)
-        x, _, mask, _, _ = super().get_input(batch)
+        z_new, reference, hint, cloth_annotation = self.get_input(batch)
+        x, _, mask, _, _, _ = super().get_input(batch)
         log = dict()
 
         # log["reference"] = reference
@@ -449,6 +449,11 @@ class CrossAttention(nn.Module):
                     reference_clip_text through cross-attention. 
                     Shape is [batch_size, seq_length, embed_dim].
         """
+
+        query = query.to('cuda')
+        key = key.to('cuda')
+        value = value.to('cuda')
+
         # Apply cross-attention, where `query` attends to `key` and `value`.
         # `attn_output` contains the resulting embeddings, and `attn_weights` contains the attention weights.
         attn_output, attn_weights = self.cross_attn(query, key, value)

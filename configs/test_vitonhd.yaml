@@ -82,7 +82,7 @@ data:
           target: ldm.data.image_vitonhd.OpenImageDataset
           params:
               state: test
-              dataset_dir: datasets/vitonhd
+              dataset_dir: D:\Capstone_Project\datasets\vitonhd
               type: unpaired
 
 lightning:

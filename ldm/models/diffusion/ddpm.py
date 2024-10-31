@@ -120,6 +120,7 @@ class DDPM(pl.LightningModule):
         inpaint = batch['inpaint_image']
         reference = batch['ref_imgs']
         hint = batch['hint']
+        cloth_annotation = batch['caption_cloth']
 
         x = x.to(memory_format=torch.contiguous_format).float()
         mask = mask.to(memory_format=torch.contiguous_format).float()
@@ -127,7 +128,7 @@ class DDPM(pl.LightningModule):
         reference = reference.to(memory_format=torch.contiguous_format).float()
         hint = hint.to(memory_format=torch.contiguous_format).float()
 
-        return x, inpaint, mask, reference, hint
+        return x, inpaint, mask, reference, hint, cloth_annotation
 
     def q_sample(self, x_start, t, noise=None):
         noise = default(noise, lambda: torch.randn_like(x_start))

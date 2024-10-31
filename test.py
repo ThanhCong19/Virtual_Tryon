@@ -55,7 +55,7 @@ if __name__ == "__main__":
     parser.add_argument("-b", "--base", type=str, default="configs/test_vitonhd.yaml")
     parser.add_argument("-c", "--ckpt", type=str, default="ckpt/hitonhd.ckpt")
     parser.add_argument("-s", "--seed", type=int, default=42)
-    parser.add_argument("-d", "--ddim", type=int, default=64)
+    parser.add_argument("-d", "--ddim", type=int, default=16)
     opt = parser.parse_args()
 
     # =============================================================
