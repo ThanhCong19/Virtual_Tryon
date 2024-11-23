@@ -176,28 +176,28 @@ python gradio_demo/app.py
 
 
 1. Fréchet Inception Distance (FID)
-ID: https://github.com/mseitzer/pytorch-fid
-Measures distribution similarity between real and generated images.
-Strengths: Captures mean and covariance differences, widely used in GAN evaluation.
-Weaknesses: Computationally expensive, sensitive to resolution.
+- FID: https://github.com/mseitzer/pytorch-fid
+- Measures distribution similarity between real and generated images.
+- Strengths: Captures mean and covariance differences, widely used in GAN evaluation.
+- Weaknesses: Computationally expensive, sensitive to resolution.
 
-3. Kernel Inception Distance (KID)
-KID: https://github.com/toshas/torch-fidelity
-Similar to FID but uses unbiased kernel-based estimation.
-Strengths: Robust on small datasets.
-Weaknesses: Sensitive to kernel hyperparameters.
+2. Kernel Inception Distance (KID)
+- KID: https://github.com/toshas/torch-fidelity
+- Similar to FID but uses unbiased kernel-based estimation.
+- Strengths: Robust on small datasets.
+- Weaknesses: Sensitive to kernel hyperparameters.
 
-5. Structural Similarity Index Measure (SSIM)
-SSIM: https://github.com/richzhang/PerceptualSimilarity
-Assesses image quality based on luminance, contrast, and structure.
-Strengths: Efficient and interpretable.
-Weaknesses: Poor correlation with human perception for complex images.
+3. Structural Similarity Index Measure (SSIM)
+- SSIM: https://github.com/richzhang/PerceptualSimilarity
+- Assesses image quality based on luminance, contrast, and structure.
+- Strengths: Efficient and interpretable.
+- Weaknesses: Poor correlation with human perception for complex images.
 
-7. Learned Perceptual Image Patch Similarity (LPIPS)
-LPIPS: https://lightning.ai/docs/torchmetrics/stable/image/structural_similarity.html
-Measures perceptual similarity using deep feature maps.
-Strengths: Aligns well with human judgment.
-Weaknesses: Computationally expensive, depends on pretrained models.
+4. Learned Perceptual Image Patch Similarity (LPIPS)
+- LPIPS: https://lightning.ai/docs/torchmetrics/stable/image/structural_similarity.html
+- Measures perceptual similarity using deep feature maps.
+- Strengths: Aligns well with human judgment.
+- Weaknesses: Computationally expensive, depends on pretrained models.
 
 
 
