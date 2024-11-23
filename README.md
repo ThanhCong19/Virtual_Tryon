@@ -107,11 +107,6 @@ PS: When we conducted the experiment, VITON-HD did not release the `agnostic-mas
 python tools/add_control.py checkpoints/pbe.ckpt checkpoints/pbe_dim6.ckpt configs/train_vitonhd.yaml
 ```
 
-- DressCode:
-```bash
-python tools/add_control.py checkpoints/pbe.ckpt checkpoints/pbe_dim5.ckpt configs/train_dresscode.yaml
-```
-
 5.   `checkpoints` folder should be as follows:
 
 ```
