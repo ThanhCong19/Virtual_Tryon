@@ -14,7 +14,6 @@ from pytorch_lightning import seed_everything
 
 from ldm.util import instantiate_from_config
 from ldm.models.diffusion.ddim import DDIMSampler
-import cv2
 
 def un_norm(x):
     return (x+1.0)/2.0
@@ -52,8 +51,8 @@ if __name__ == "__main__":
     # 处理 opt
     # =============================================================
     parser = argparse.ArgumentParser()
-    parser.add_argument("-b", "--base", type=str, default="configs/test_vitonhd.yaml")
-    parser.add_argument("-c", "--ckpt", type=str, default="ckpt/hitonhd.ckpt")
+    parser.add_argument("-b", "--base", type=str, default="configs/test.yaml")
+    parser.add_argument("-c", "--ckpt", type=str, default="./model.ckpt")
     parser.add_argument("-s", "--seed", type=int, default=42)
     parser.add_argument("-d", "--ddim", type=int, default=16)
     opt = parser.parse_args()
@@ -101,15 +100,10 @@ if __name__ == "__main__":
             for i,batch in enumerate(data.dataloader):
                 # 加载数据
                 inpaint = batch["inpaint_image"].to(torch.float16).to(device)
-                # print(inpaint.shape)
                 reference = batch["ref_imgs"].to(torch.float16).to(device)
-                # print(reference.shape)
                 mask = batch["inpaint_mask"].to(torch.float16).to(device)
-                # print(mask.shape)
                 hint = batch["hint"].to(torch.float16).to(device)
-                # print(hint.shape)
                 truth = batch["GT"].to(torch.float16).to(device)
-                # print(truth.shape)
                 # 数据处理
                 encoder_posterior_inpaint = model.first_stage_model.encode(inpaint)
                 z_inpaint = model.scale_factor * (encoder_posterior_inpaint.sample()).detach()
@@ -145,30 +139,12 @@ if __name__ == "__main__":
                 truth = torch.clamp((truth + 1.0) / 2.0, min=0.0, max=1.0)
                 truth = truth.cpu().permute(0, 2, 3, 1).numpy()
                 truth = torch.from_numpy(truth).permute(0, 3, 1, 2)
-                
                 x_checked_image_torch_C = x_checked_image_torch*(1-mask) + truth.cpu()*mask
                 x_checked_image_torch = torch.nn.functional.interpolate(x_checked_image_torch.float(), size=[512,384])
                 x_checked_image_torch_C = torch.nn.functional.interpolate(x_checked_image_torch_C.float(), size=[512,384])
                 
-                #apply seamlessClone technique here
-                human_img_cv = np.array(truth.cpu().permute(1, 2, 0) * 255, dtype=np.uint8)
-                img_C_cv = np.array(x_checked_image_torch_C.cpu()[0].permute(1, 2, 0) * 255, dtype=np.uint8)
-                mask_cv = np.array(mask.squeeze().cpu() * 255, dtype=np.uint8)
-
-                human_img_cv = cv2.resize(human_img_cv, (384, 512))
-                img_C_cv = cv2.resize(img_C_cv, (384, 512))
-                mask_cv = cv2.resize(mask_cv, (384, 512))
-
-                mask_cv = 1-mask_cv
-                mask_cv = 255-mask
-
-                img_C = cv2.seamlessClone(human_img_cv, img_C_cv, mask_cv, (192,256), cv2.NORMAL_CLONE)
-                img_C_rgb = cv2.cvtColor(img_C, cv2.COLOR_BGR2RGB)
-                img_C_tensor = torch.from_numpy(img_C_rgb).permute(2, 0, 1).float()
-                img_C_tensor = img_C_tensor / 255.0
-
                 all_img.append(x_checked_image_torch[0])
-                all_img_C.append(img_C_tensor)
+                all_img_C.append(x_checked_image_torch_C[0])
                 grid = torch.stack(all_img, 0)
                 grid = torchvision.utils.make_grid(grid)
                 grid = 255. * rearrange(grid, 'c h w -> h w c').cpu().numpy()

@@ -1,4 +1,4 @@
-name: CAT-DM
+name: FPT-VTON
 channels:
   - pytorch
   - defaults
