@@ -112,7 +112,6 @@ python tools/add_control.py checkpoints/pbe.ckpt checkpoints/pbe_dim6.ckpt confi
 ```
 checkpoints
 ├── pbe.ckpt
-├── pbe_dim5.ckpt
 └── pbe_dim6.ckpt
 ```
 
