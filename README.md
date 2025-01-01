@@ -10,10 +10,6 @@
 
 
 
-## Abstract
-
-> This project focuses on image-based virtual try-on, which generates an image of a person wearing a selected garment by using two input images: one of the person and one of the garment. Previous research has adapted exemplar-based inpainting diffusion models to enhance the natural appearance of virtual try-on images compared to other approaches (such as GAN-based methods). However, these methods often fail to maintain the original garment’s identity. To address this limitation, we propose a new diffusion model, called FPT Virtual Try-on with Diffusion Model (FPT-VTON), designed to improve garment fidelity and produce realistic virtual try-on images. To enhance controllability, a base diffusion-based virtual try-on network was created, integrating ControlNet to add additional control conditions and enhance feature extraction for garment images. FPT-VTON is an upgrade of Garment-Conditioned Diffusion Model (GC-DM), as we reuse the inherent diffusion model architecture of CAT-DM paper and apply more Garment features are extracted using a CLIP transformer encoder for images, then combined with the garment’s detailed caption (e.g., “[V]: short sleeve round neck t-shirt”) processed through a CLIP transformer encoder for text, put them into cross-attention mechanism to combine together. The garment caption and is provided from in json format.
-
 ## Hardware Requirement
 
 Our experiments were conducted on two NVIDIA GeForce RTX 4090 graphics cards, with a single RTX 4090 having 24GB of video memory. Please note that our model cannot be trained on graphics cards with less video memory than the RTX 4090.
