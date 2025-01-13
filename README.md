@@ -1,6 +1,6 @@
 <div align="center">
 
-<h1>FPT-VTON: FPT Virtual Try-On with Diffusion Model</h1>
+<h1>FPT-VTON: FPT Virtual Try-On With Diffusion Model</h1>
 
 <a href='https://fptvton.vercel.app/'><img src='https://img.shields.io/badge/Project-Page-green'></a>
 <a href='https://huggingface.co/spaces/basso4/FPT-VTON'><img src='https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Demo-yellow'></a>
